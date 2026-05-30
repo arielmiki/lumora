@@ -5,6 +5,7 @@ import { AlertCircle, ArrowLeft, ArrowUpRight, Check, Copy, Download, Loader2, S
 import { apiService, Product, UploadedVideo } from '../services/api';
 import { useStore } from '../stores/useStore';
 import { buildPixVerseShotPack, PixVerseStyle } from '../lib/pixversePack';
+import { publicImage } from '../lib/utils';
 
 export default function Studio() {
   const [searchParams] = useSearchParams();
@@ -330,7 +331,11 @@ export default function Studio() {
                 {currentProduct && !isExtracting && (
                   <div className="mt-5 rounded-2xl border border-line bg-ink-2 p-4">
                     <div className="flex gap-4">
-                      <img src={currentProduct.image} alt={currentProduct.title} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                      {currentProduct.image ? (
+                        <img src={publicImage(currentProduct.image)} alt={currentProduct.title} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 bg-ink" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-ink border border-line2 flex items-center justify-center text-[10px] uppercase tracking-[0.18em] text-muted flex-shrink-0">No image</div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="font-display font-medium text-bone truncate">{currentProduct.title}</div>
                         <div className="mt-1 text-[13px] text-bone-dim">{currentProduct.price}</div>
@@ -479,7 +484,7 @@ export default function Studio() {
                             "- Use the provided product image as reference input for every shot (upload or --image URL).",
                             "- Keep product appearance consistent across shots.",
                             "",
-                            currentProduct?.image ? `Product image URL: ${currentProduct.image}` : "Product image URL: (not provided)",
+                            currentProduct?.image ? `Product image URL: ${publicImage(currentProduct.image)}` : "Product image URL: (not provided)",
                             pdpUrl ? `Product page (PDP): ${pdpUrl}` : "Product page (PDP): (not provided)",
                             "",
                             "Shot prompts (run each as its own PixVerse generation):",
@@ -504,7 +509,7 @@ export default function Studio() {
                                 "- Use the provided product image as reference input for every shot (upload or --image URL).",
                                 "- Keep product appearance consistent across shots.",
                                 "",
-                                currentProduct?.image ? `Product image URL: ${currentProduct.image}` : "Product image URL: (not provided)",
+                                currentProduct?.image ? `Product image URL: ${publicImage(currentProduct.image)}` : "Product image URL: (not provided)",
                                 pdpUrl ? `Product page (PDP): ${pdpUrl}` : "Product page (PDP): (not provided)",
                                 "",
                                 "Shot prompts (run each as its own PixVerse generation):",
@@ -585,16 +590,16 @@ export default function Studio() {
                       <div className="rounded-2xl border border-line bg-ink p-4">
                         <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted mb-3">Reference image</div>
                         <div className="flex items-center gap-4">
-                          <img src={currentProduct.image} alt={currentProduct.title} className="w-14 h-14 rounded-xl object-cover border border-line flex-shrink-0" />
+                          <img src={publicImage(currentProduct.image)} alt={currentProduct.title} className="w-14 h-14 rounded-xl object-cover border border-line flex-shrink-0 bg-ink" />
                           <div className="flex flex-wrap gap-2">
-                            <button onClick={() => handleCopy(currentProduct.image, 'image')} className="btn-primary btn-sm">
+                            <button onClick={() => handleCopy(publicImage(currentProduct.image), 'image')} className="btn-primary btn-sm">
                               {copied === 'image' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                               {copied === 'image' ? 'Copied' : 'Copy image URL'}
                             </button>
-                            <a href={currentProduct.image} target="_blank" rel="noreferrer" className="btn-outline btn-sm">
+                            <a href={publicImage(currentProduct.image)} target="_blank" rel="noreferrer" className="btn-outline btn-sm">
                               Open image <ArrowUpRight className="w-4 h-4" />
                             </a>
-                            <a href={currentProduct.image} className="btn-outline btn-sm" download>
+                            <a href={publicImage(currentProduct.image)} className="btn-outline btn-sm" download>
                               Download image <Download className="w-4 h-4" />
                             </a>
                             <a href="https://app.pixverse.ai/" target="_blank" rel="noreferrer" className="btn-dark btn-sm">
