@@ -361,134 +361,149 @@ class ProductScraper {
     return product;
   }
 
-  private async scrapeShopee(url: string): Promise<Product> {
-    console.log('Scraping Shopee SG...');
+  private extractShopeeIds(url: string): { shopId: string; itemId: string } | null {
+    const m = url.match(/-i\.(\d+)\.(\d+)/);
+    if (m) return { shopId: m[1], itemId: m[2] };
+    const m2 = url.match(/\/product\/(\d+)\/(\d+)/);
+    if (m2) return { shopId: m2[1], itemId: m2[2] };
+    return null;
+  }
 
+  private titleFromShopeeSlug(url: string): string {
+    let slug = '';
     try {
-      const response = await axios.get(url, {
-        headers: {
-          'User-Agent': this.getRandomUserAgent(),
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-        },
-        timeout: 15000,
-      });
-
-      const html = response.data;
-      const $ = cheerio.load(html);
-
-      // Shopee uses pre-rendered JSON in script tags
-      let productData: any = null;
-
-      $('script').each((i, el) => {
-        const content = $(el).html();
-        if (content && content.includes('"product"')) {
-          try {
-            const match = content.match(/"product":\s*({.*?}),/s);
-            if (match) {
-              productData = JSON.parse(match[1]);
-            }
-          } catch (e) {
-            // Try another pattern
-            const scriptMatch = content.match(/window\.__PRODUCT_DETAIL_STATE__\s*=\s*({.*?});/s);
-            if (scriptMatch) {
-              productData = JSON.parse(scriptMatch[1]);
-            }
-          }
-        }
-      });
-
-      // Extract from meta tags
-      let title = $('meta[property="og:title"]').attr('content') ||
-                  $('meta[name="title"]').attr('content') ||
-                  $('h1').first().text().trim();
-
-      let description = $('meta[property="og:description"]').attr('content') || '';
-
-      let image = $('meta[property="og:image"]').attr('content') || '';
-
-      // Try JSON-LD
-      const jsonLd = $('script[type="application/ld+json"]').html();
-      if (jsonLd) {
-        try {
-          const data = JSON.parse(jsonLd);
-          if (data.name) title = data.name;
-          if (data.description) description = data.description;
-          if (data.image) image = Array.isArray(data.image) ? data.image[0] : data.image;
-        } catch (e) {
-          console.log('JSON-LD parsing failed');
-        }
-      }
-
-      // Extract price
-      let price = $('[data-testid="product-price"], .product-price, [class*="price"]').first().text().trim();
-      if (!price || price === '') {
-        price = $('span:contains("S$"), .price').first().text().trim();
-      }
-      if (!price) {
-        price = 'S$0.00';
-      }
-
-      // Extract rating
-      let rating: number | undefined;
-      const ratingEl = $('[data-testid="rating"], .rating, [class*="rating"]').first();
-      const ratingText = ratingEl.text().trim();
-      if (ratingText) {
-        const match = ratingText.match(/(\d+\.?\d*)/);
-        if (match) rating = parseFloat(match[1]);
-      }
-
-      // Extract reviews
-      let reviews: number | undefined;
-      const reviewsEl = $('[data-testid="reviews-count"], .reviews-count, [class*="review-count"]').first();
-      const reviewsText = reviewsEl.text().trim();
-      if (reviewsText) {
-        const match = reviewsText.match(/[\d,]+/);
-        if (match) reviews = parseInt(match[0].replace(/,/g, ''));
-      }
-
-      // Get additional images
-      const images: string[] = [];
-      if (image) images.push(image);
-
-      $('img[src*="product"], img[src*="shopee"], .image-gallery img, [class*="product-image"] img').each((i, el) => {
-        const src = $(el).attr('src') || $(el).attr('data-src');
-        if (src && !images.includes(src) && !src.includes('placeholder')) {
-          images.push(src);
-        }
-        return images.length < 5;
-      });
-
-      const product: Product = {
-        title: title || 'Product',
-        description: description || 'No description available',
-        price: price || 'S$0.00',
-        currency: 'SGD',
-        image: image || '',
-        images: images.length > 0 ? images : [image],
-        rating,
-        reviews,
-        store: 'Shopee SG',
-        url,
-      };
-
-      console.log('Successfully scraped Shopee product:', product.title);
-      return product;
-
-    } catch (error: any) {
-      console.error('Shopee scraping error:', error.message);
-
-      if (error.response?.status === 403) {
-        throw new Error('Access denied. Shopee may require authentication.');
-      } else if (error.response?.status === 404) {
-        throw new Error('Product not found. Please check the URL.');
-      }
-
-      throw new Error(`Failed to scrape Shopee: ${error.message}`);
+      const u = new URL(url);
+      const last = u.pathname.split('/').filter(Boolean).pop() || '';
+      slug = decodeURIComponent(last);
+    } catch {
+      slug = decodeURIComponent(url.split('/').filter(Boolean).pop() || '');
     }
+    slug = slug.replace(/-i\.\d+\.\d+.*$/i, '');
+    slug = slug.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '');
+    slug = slug.replace(/-+/g, ' ').replace(/\s+/g, ' ').trim();
+    return slug;
+  }
+
+  private async tryShopeeItemApi(shopId: string, itemId: string): Promise<any | null> {
+    const endpoints = [
+      `https://shopee.sg/api/v4/item/get?itemid=${itemId}&shopid=${shopId}`,
+      `https://shopee.sg/api/v4/pdp/get_pc?shop_id=${shopId}&item_id=${itemId}`,
+    ];
+    for (const ep of endpoints) {
+      try {
+        const r = await axios.get(ep, {
+          headers: {
+            'User-Agent': this.getRandomUserAgent(),
+            Accept: 'application/json',
+            'Accept-Language': 'en-SG,en;q=0.9',
+            Referer: 'https://shopee.sg/',
+            'x-api-source': 'pc',
+            'x-shopee-language': 'en',
+          },
+          timeout: 12000,
+          validateStatus: (s) => s >= 200 && s < 500,
+        });
+        if (r.status === 200 && r.data && !r.data.error) return r.data;
+      } catch {
+        /* try next */
+      }
+    }
+    return null;
+  }
+
+  private async scrapeShopee(url: string): Promise<Product> {
+    console.log('Scraping Shopee SG:', url);
+
+    const ids = this.extractShopeeIds(url);
+    let title = '';
+    let description = '';
+    let image = '';
+    let price = '';
+    let rating: number | undefined;
+    let reviews: number | undefined;
+    const images: string[] = [];
+
+    if (ids) {
+      const apiData = await this.tryShopeeItemApi(ids.shopId, ids.itemId);
+      const item = apiData?.data?.item || apiData?.item || apiData?.data;
+      if (item && typeof item === 'object') {
+        title = item.name || item.title || '';
+        description = item.description || '';
+        if (typeof item.price === 'number') {
+          const p = item.price / 100000;
+          price = `S$${p.toFixed(2)}`;
+        } else if (typeof item.price_min === 'number') {
+          const p = item.price_min / 100000;
+          price = `S$${p.toFixed(2)}`;
+        }
+        if (Array.isArray(item.images)) {
+          for (const id of item.images.slice(0, 5)) {
+            images.push(`https://down-sg.img.susercontent.com/file/${id}`);
+          }
+          image = images[0] || '';
+        }
+        const rs = typeof item.item_rating?.rating_star === 'number' ? item.item_rating.rating_star : undefined;
+        if (rs && rs > 0) rating = Math.round(rs * 10) / 10;
+        const rc = item.cmt_count || item.item_rating?.rating_count?.[0];
+        if (typeof rc === 'number' && rc > 0) reviews = rc;
+      }
+    }
+
+    if (!title) {
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            'User-Agent': this.getRandomUserAgent(),
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-SG,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            Connection: 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+          },
+          timeout: 12000,
+          validateStatus: (s) => s >= 200 && s < 400,
+        });
+        const $ = cheerio.load(String(response.data || ''));
+        const og = $('meta[property="og:title"]').attr('content');
+        if (og && !/^shopee\b/i.test(og.trim())) title = og.trim();
+        if (!image) {
+          const ogImg = $('meta[property="og:image"]').attr('content');
+          if (ogImg) image = this.normalizeImageUrl(ogImg);
+        }
+        if (!description) {
+          const ogDesc = $('meta[property="og:description"]').attr('content');
+          if (ogDesc) description = ogDesc.trim();
+        }
+      } catch (err: any) {
+        console.log('Shopee HTML fallback failed:', err?.message);
+      }
+    }
+
+    if (!title) {
+      title = this.titleFromShopeeSlug(url);
+    }
+
+    const product: Product = {
+      title: title || 'Product',
+      description: description || '',
+      price: price || '',
+      currency: 'SGD',
+      image: image || '',
+      images: images.length ? images : image ? [image] : [],
+      rating,
+      reviews,
+      store: 'Shopee SG',
+      url,
+    };
+
+    console.log('Shopee SG product:', {
+      title: product.title,
+      hasImage: !!product.image,
+      price: product.price || '(not available — manual entry needed)',
+      via: image ? 'api+slug' : 'slug-only',
+    });
+
+    return product;
   }
 }
 
