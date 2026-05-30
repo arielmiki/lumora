@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViralVibe - CORS Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1e1e2e 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .test-section h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            border: 1px solid #84CC16;
+            background: rgba(132, 204, 22, 0.1);
+        }
+        
+        .error {
+            border: 1px solid #EF4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .pending {
+            border: 1px solid #F59E0B;
+            background: rgba(245, 158, 11, 0.1);
+        }
+        
+        .status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status.success { background: #84CC16; }
+        .status.error { background: #EF4444; }
+        .status.pending { background: #F59E0B; }
+        
+        .cors-headers {
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            color: #9CA3AF;
+        }
+        
+        .info {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #9CA3AF;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 ViralVibe CORS Test</h1>
+        
+        <p class="info">
+            Testing API endpoints from frontend origin (http://localhost:5173) to backend (http://localhost:3001)
+        </p>
+        
+        <div class="test-section">
+            <h2><span class="status success"></span>1. Health Check</h2>
+            <button onclick="testHealthCheck()">Test Health Endpoint</button>
+            <div id="health-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2><span class="status success"></span>2. Product Extraction (Mock)</h2>
+            <button onclick="testProductExtract()">Test Product Extraction</button>
+            <div id="extract-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2><span class="status success"></span>3. Video Generation</h2>
+            <button onclick="testVideoGeneration()">Start Video Generation</button>
+            <div id="generation-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2><span class="status success"></span>4. Poll Task Status</h2>
+            <button onclick="testPollStatus()" id="poll-btn" disabled>Poll Status</button>
+            <div id="poll-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2><span class="status success"></span>5. Full End-to-End Flow</h2>
+            <button onclick="testFullFlow()">Run Complete Test</button>
+            <div id="full-result" class="result"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        let currentTaskId = null;
+        
+        async function testHealthCheck() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.className = 'result pending';
+            resultDiv.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+                
+                console.log('✅ Health Check Success:', data);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ CORS Error: ${error.message}\n\nThis means CORS is not properly configured on the backend.`;
+                console.error('❌ Health Check Error:', error);
+            }
+        }
+        
+        async function testProductExtract() {
+            const resultDiv = document.getElementById('extract-result');
+            resultDiv.className = 'result pending';
+            resultDiv.textContent = 'Extracting product...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/product/extract`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: 'https://www.tiktok.com/shop/product/test'
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+                
+                console.log('✅ Product Extract Success:', data);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ CORS Error: ${error.message}`;
+                console.error('❌ Product Extract Error:', error);
+            }
+        }
+        
+        async function testVideoGeneration() {
+            const resultDiv = document.getElementById('generation-result');
+            resultDiv.className = 'result pending';
+            resultDiv.textContent = 'Starting video generation...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        productData: {
+                            title: 'Test Product',
+                            description: 'A test product',
+                            price: 'S$99.90',
+                            image: 'https://example.com/image.jpg',
+                            store: 'TikTok Shop'
+                        },
+                        style: 'trending',
+                        duration: 15,
+                        aspectRatio: '9:16'
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.task) {
+                    currentTaskId = data.task.id;
+                    document.getElementById('poll-btn').disabled = false;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                    console.log('✅ Video Generation Success:', data);
+                } else {
+                    throw new Error(data.error || 'Generation failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ CORS Error: ${error.message}`;
+                console.error('❌ Video Generation Error:', error);
+            }
+        }
+        
+        async function testPollStatus() {
+            if (!currentTaskId) {
+                alert('No task ID. Please run video generation first.');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('poll-result');
+            resultDiv.className = 'result pending';
+            resultDiv.textContent = 'Polling status...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/generate/${currentTaskId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+                console.log('✅ Poll Status Success:', data);
+                
+                if (data.task.status === 'completed') {
+                    resultDiv.textContent += '\n\n🎉 Video generation completed!';
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ CORS Error: ${error.message}`;
+                console.error('❌ Poll Status Error:', error);
+            }
+        }
+        
+        async function testFullFlow() {
+            const resultDiv = document.getElementById('full-result');
+            resultDiv.className = 'result pending';
+            resultDiv.textContent = 'Running full end-to-end test...\n\n';
+            
+            try {
+                // Step 1: Health check
+                resultDiv.textContent += '1️⃣ Testing health check...\n';
+                let response = await fetch(`${API_BASE}/api/health`);
+                let data = await response.json();
+                resultDiv.textContent += `✅ Health: ${data.status}\n\n`;
+                
+                // Step 2: Generate video
+                resultDiv.textContent += '2️⃣ Starting video generation...\n';
+                response = await fetch(`${API_BASE}/api/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productData: {
+                            title: 'Test Product',
+                            description: 'A test product',
+                            price: 'S$99.90',
+                            image: 'https://example.com/image.jpg',
+                            store: 'TikTok Shop'
+                        },
+                        style: 'trending',
+                        duration: 15,
+                        aspectRatio: '9:16'
+                    }),
+                });
+                data = await response.json();
+                const taskId = data.task?.id;
+                resultDiv.textContent += `✅ Task ID: ${taskId}\n\n`;
+                
+                // Step 3: Poll status
+                resultDiv.textContent += '3️⃣ Polling task status...\n';
+                for (let i = 0; i < 5; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    response = await fetch(`${API_BASE}/api/generate/${taskId}`);
+                    data = await response.json();
+                    resultDiv.textContent += `   Poll ${i+1}: ${data.task?.status} (${data.task?.progress || 0}%)\n`;
+                    
+                    if (data.task?.status === 'completed' || data.task?.status === 'failed') {
+                        break;
+                    }
+                }
+                
+                resultDiv.textContent += '\n🎉 End-to-end test completed successfully!\n';
+                resultDiv.className = 'result success';
+                console.log('✅ Full E2E Test Success');
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent += `\n❌ CORS Error: ${error.message}`;
+                console.error('❌ Full E2E Test Error:', error);
+            }
+        }
+        
+        // Run health check on load
+        window.onload = () => {
+            testHealthCheck();
+        };
+    </script>
+</body>
+</html>

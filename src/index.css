@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+  
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply font-sans text-bone bg-ink antialiased;
+    font-feature-settings: "kern", "liga", "clig";
+  }
+  
+  ::selection {
+    @apply bg-gold text-ink;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-full transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-0;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-[13px];
+  }
+  
+  .btn-primary {
+    @apply btn bg-gold text-ink hover:bg-gold-soft;
+    @apply focus:ring-gold/60;
+    @apply active:scale-[0.98];
+  }
+  
+  .btn-outline {
+    @apply btn bg-transparent text-bone border border-line2;
+    @apply hover:bg-white/5 hover:border-bone/80;
+    @apply focus:ring-gold/50;
+    @apply active:scale-[0.98];
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent text-bone-dim hover:bg-white/5;
+    @apply focus:ring-gold/50;
+    @apply active:scale-[0.98];
+  }
+
+  .btn-dark {
+    @apply btn bg-surface-2 text-bone border border-line;
+    @apply hover:bg-surface-3;
+    @apply focus:ring-gold/50;
+    @apply active:scale-[0.98];
+  }
+  
+  .card {
+    @apply bg-surface border border-line rounded-2xl;
+    @apply transition-transform duration-200;
+    @apply hover:-translate-y-0.5;
+  }
+  
+  .card-hover {
+    @apply card cursor-pointer;
+  }
+  
+  .input {
+    @apply w-full px-4 py-3 bg-ink-2 border border-line rounded-xl;
+    @apply text-bone placeholder-muted;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/60;
+  }
+  
+  .label {
+    @apply block text-xs font-semibold text-muted uppercase tracking-[0.22em] mb-2;
+  }
+  
+  .heading-1 {
+    @apply text-display-lg text-bone font-display;
+  }
+  
+  .heading-2 {
+    @apply text-display-md text-bone font-display;
+  }
+  
+  .heading-3 {
+    @apply text-display-sm text-bone font-display;
+  }
+  
+  .text-body {
+    @apply text-body-md text-bone-dim;
+  }
+  
+  .text-caption {
+    @apply text-xs font-medium text-muted;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-caption font-semibold;
+  }
+  
+  .badge-primary {
+    @apply badge bg-gold/20 text-gold border border-gold/25;
+  }
+  
+  .badge-secondary {
+    @apply badge bg-clay/15 text-clay border border-clay/25;
+  }
+  
+  .badge-accent {
+    @apply badge bg-sage/15 text-sage border border-sage/25;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-gold to-gold-soft bg-clip-text text-transparent;
+  }
+  
+  .gradient-bg {
+    @apply bg-gradient-to-br from-ink via-ink-2 to-ink;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(to right, #f6f7f8 4%, #edeef1 25%, #f6f7f8 50%);
+  background-size: 1000px 100%;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+@keyframes lumoraMarquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-lumora-marquee {
+  animation: lumoraMarquee 26s linear infinite;
+}
+
+@keyframes lumoraBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes lumoraFill {
+  0% {
+    transform: scaleX(0);
+  }
+  33%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes lumoraReel {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
