@@ -69,33 +69,32 @@ export default function LandingPage() {
               <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
                 <div className="inline-flex items-center gap-3 text-[11.5px] uppercase tracking-[0.28em] font-semibold text-gold">
                   <span className="w-7 h-px bg-gold/60" />
-                  AI video studio for modern commerce
+                  PixVerse prompt builder · Marketplace showcase
                 </div>
 
                 <h1 className="mt-6 font-display font-medium leading-[1.02] tracking-[-0.015em] text-[clamp(46px,6.6vw,90px)]">
-                  Cinematic <em className="italic font-medium">product video,</em>
+                  PixVerse <em className="italic font-medium">prompts,</em>
                   <br />
-                  generated in <span className="text-transparent [text-stroke:1px_theme(colors.gold.DEFAULT)] [-webkit-text-stroke:1px_theme(colors.gold.DEFAULT)]">seconds</span>.
+                  shot-ready in <span className="text-transparent [text-stroke:1px_theme(colors.gold.DEFAULT)] [-webkit-text-stroke:1px_theme(colors.gold.DEFAULT)]">seconds</span>.
                 </h1>
 
                 <p className="mt-7 text-[clamp(17px,1.6vw,20px)] text-bone-dim max-w-[520px]">
-                  Lumora turns a product link into a campaign-grade vertical film — script, scenes, captions and sound — exported for every
-                  channel before your coffee cools.
+                  Lumora turns any TikTok Shop or Shopee link into a ready-to-run PixVerse shot pack — prompts, captions and reference images for every scene — then showcases the finished films in a public marketplace.
                 </p>
 
                 <div className="mt-9 flex flex-wrap items-center gap-3">
                   <RouterLink to="/studio" className="btn-primary">
-                    Generate your first film <ArrowUpRight className="w-4 h-4" />
+                    Build a PixVerse shot pack <ArrowUpRight className="w-4 h-4" />
                   </RouterLink>
                   <a href="#public" className="btn-outline">
                     <Play className="w-4 h-4" />
-                    See generated films
+                    Browse the showcase
                   </a>
                 </div>
 
                 <div className="mt-6 text-[13px] text-muted flex items-center gap-3">
                   <span className="w-2 h-2 rounded-full bg-gold shadow-[0_0_10px_theme(colors.gold.DEFAULT)]" />
-                  No card required · 5 complimentary renders · Ready in under a minute
+                  Powered by PixVerse · Prompts ready in under a minute · Showcase your final films
                 </div>
               </motion.div>
             </div>
@@ -191,26 +190,26 @@ export default function LandingPage() {
           <div className="flex items-end justify-between gap-6 flex-wrap">
             <div>
               <div className="inline-flex items-center gap-3 text-[11.5px] uppercase tracking-[0.28em] font-semibold text-gold">
-                Public gallery
+                Marketplace showcase
               </div>
               <h2 className="mt-4 font-display font-medium text-[clamp(30px,4.4vw,52px)]">
-                Generated product films
+                PixVerse films from the community
               </h2>
               <p className="mt-3 text-[14.5px] text-bone-dim max-w-xl">
-                Your latest renders appear here for preview, download, and quick sharing.
+                Browse, preview, and remix PixVerse renders other creators have published from TikTok Shop and Shopee product pages.
               </p>
             </div>
           </div>
 
           {films.length === 0 ? (
             <div className="mt-10 card p-10 text-center">
-              <div className="font-display font-medium text-[22px]">No films yet</div>
+              <div className="font-display font-medium text-[22px]">Showcase is empty</div>
               <div className="mt-2 text-[14px] text-bone-dim max-w-md mx-auto">
-                Paste a product link in Studio to generate your first product film.
+                Paste a marketplace product link in Studio, build a PixVerse shot pack, and your render lands here.
               </div>
               <div className="mt-6 flex justify-center gap-3">
                 <RouterLink to="/studio" className="btn-primary">
-                  Open studio <ArrowUpRight className="w-4 h-4" />
+                  Open prompt builder <ArrowUpRight className="w-4 h-4" />
                 </RouterLink>
               </div>
             </div>
@@ -256,16 +255,16 @@ export default function LandingPage() {
         <section className="mb-28 rounded-3xl border border-line2 bg-gradient-to-br from-[#241a0e] via-ink to-ink px-8 py-16 text-center relative overflow-hidden">
           <div className="pointer-events-none absolute -top-44 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full blur-[95px] bg-gold/20" />
           <h2 className="relative z-10 font-display font-medium text-[clamp(36px,5.2vw,66px)] leading-[1.04]">
-            Your next campaign
+            Drop a product link.
             <br />
-            is one paste away.
+            Get a PixVerse shot pack.
           </h2>
           <p className="relative z-10 mt-5 text-bone-dim max-w-xl mx-auto">
-            Join brands turning product pages into films that sell while they sleep.
+            Build prompts, generate cinematic shots, publish to the marketplace showcase — all in one place.
           </p>
           <div className="relative z-10 mt-8 flex justify-center">
             <RouterLink to="/studio" className="btn-primary">
-              Open the studio <ArrowUpRight className="w-4 h-4" />
+              Open the prompt builder <ArrowUpRight className="w-4 h-4" />
             </RouterLink>
           </div>
         </section>
@@ -368,7 +367,7 @@ export default function LandingPage() {
             <div className="md:col-span-1">
               <div className="font-display font-semibold tracking-[0.14em] uppercase text-[18px]">Lumora</div>
               <p className="mt-4 text-[14px] text-muted max-w-[320px]">
-                The AI film studio that turns ecommerce products into cinematic, social-ready video — in seconds, at scale.
+                The PixVerse prompt builder for ecommerce — drop in any marketplace link, get a shot-ready prompt pack, and publish to the community showcase.
               </p>
             </div>
             <div>

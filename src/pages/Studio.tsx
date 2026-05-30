@@ -24,7 +24,7 @@ export default function Studio() {
   const [isResolving, setIsResolving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [activeShot, setActiveShot] = useState<number | null>(null);
-  const [mode, setMode] = useState<"manual" | "agent">("manual");
+  const [mode, setMode] = useState<"manual" | "agent">("agent");
   const [draftProjectId, setDraftProjectId] = useState<string>('');
   const [shotRenders, setShotRenders] = useState<Array<{
     index: number;
@@ -444,17 +444,17 @@ export default function Studio() {
                 <div className="flex gap-2 mb-6">
                   <button
                     type="button"
-                    onClick={() => setMode("manual")}
-                    className={["flex-1 rounded-xl border px-4 py-2 text-[13px] transition-colors", mode === "manual" ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2"].join(" ")}
-                  >
-                    Manual (Web)
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setMode("agent")}
                     className={["flex-1 rounded-xl border px-4 py-2 text-[13px] transition-colors", mode === "agent" ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2"].join(" ")}
                   >
                     Agent (CLI prompt)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("manual")}
+                    className={["flex-1 rounded-xl border px-4 py-2 text-[13px] transition-colors", mode === "manual" ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2"].join(" ")}
+                  >
+                    Manual (Web)
                   </button>
                 </div>
 
