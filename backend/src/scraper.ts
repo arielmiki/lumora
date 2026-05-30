@@ -229,30 +229,89 @@ class ProductScraper {
       'sec-ch-ua-platform': '"macOS"',
     };
 
-    let html = '';
-    let usedUrl = url;
+    type Attempt = {
+      url: string;
+      status: number;
+      length: number;
+      ogTitle: string;
+      ogImage: string;
+      ogDesc: string;
+      homepageFallback: boolean;
+      title: string;
+      image: string;
+      description: string;
+      price: string;
+      images?: string[];
+      rating?: number;
+      reviews?: number;
+      store?: string;
+    };
+
+    let best: Attempt | null = null;
     let lastError: any = null;
+    const attempts: Array<{ url: string; status?: number; len?: number; err?: string }> = [];
+
     for (const candidate of candidates) {
       try {
         const response = await axios.get(candidate, {
           headers,
-          timeout: 15000,
+          timeout: 20000,
           maxRedirects: 5,
           validateStatus: (s) => s >= 200 && s < 400,
         });
         const body = String(response.data || '');
-        if (body.length < 8000) continue;
-        html = body;
-        usedUrl = candidate;
-        break;
+        attempts.push({ url: candidate, status: response.status, len: body.length });
+        if (!body) continue;
+
+        const $page = cheerio.load(body);
+        const ogTitle = $page('meta[property="og:title"]').attr('content') || '';
+        const ogImage = $page('meta[property="og:image"]').attr('content') || '';
+        const ogDesc = $page('meta[property="og:description"]').attr('content') || '';
+        const homepageFallback =
+          this.isTikTokShopHomepageFallback(ogTitle) ||
+          this.isTikTokShopHomepageFallback(ogImage) ||
+          this.isTikTokShopHomepageFallback(ogDesc);
+
+        const found = this.deepFindTikTokProduct(body) || {};
+
+        const title = (found.title || (!homepageFallback ? ogTitle : '') || '').trim();
+        const image = found.image || this.normalizeImageUrl(!homepageFallback ? ogImage : '');
+        const description = (found.description || (!homepageFallback ? ogDesc : '') || '').trim();
+        const price = found.price || '';
+
+        const attempt: Attempt = {
+          url: candidate,
+          status: response.status,
+          length: body.length,
+          ogTitle,
+          ogImage,
+          ogDesc,
+          homepageFallback,
+          title,
+          image,
+          description,
+          price,
+          images: found.images,
+          rating: found.rating,
+          reviews: found.reviews,
+          store: found.store,
+        };
+
+        if (title && image && !homepageFallback) {
+          best = attempt;
+          break;
+        }
+        if (!best || (attempt.title && !best.title) || (attempt.image && !best.image)) {
+          best = attempt;
+        }
       } catch (err: any) {
         lastError = err;
-        if (err.response?.status === 404) continue;
-        if (err.response?.status === 403) continue;
+        attempts.push({ url: candidate, status: err.response?.status, err: err.message });
       }
     }
 
-    if (!html) {
+    if (!best) {
+      console.error('TikTok Shop scrape — no candidate returned a body:', JSON.stringify(attempts));
       if (lastError?.response?.status === 403) {
         throw new Error('Access denied. TikTok Shop may require authentication.');
       }
@@ -262,52 +321,24 @@ class ProductScraper {
       throw new Error(`Failed to scrape TikTok Shop: ${lastError?.message || 'unreachable'}`);
     }
 
-    const $ = cheerio.load(html);
-    const ogTitle = $('meta[property="og:title"]').attr('content') || '';
-    const ogImage = $('meta[property="og:image"]').attr('content') || '';
-    const ogDesc = $('meta[property="og:description"]').attr('content') || '';
-    const homepageFallback =
-      this.isTikTokShopHomepageFallback(ogTitle) ||
-      this.isTikTokShopHomepageFallback(ogImage) ||
-      this.isTikTokShopHomepageFallback(ogDesc);
+    console.log('TikTok Shop scrape attempts:', JSON.stringify(attempts), 'chose:', best.url, 'len:', best.length);
 
-    const found = this.deepFindTikTokProduct(html) || {};
+    const usedUrl = best.url;
+    const title = best.title;
+    const image = best.image;
+    const description = best.description;
+    const price = best.price;
+    const rating = best.rating;
+    const reviews = best.reviews;
+    const store = best.store || 'TikTok Shop';
 
-    let title = (found.title || (!homepageFallback ? ogTitle : '') || '').trim();
-    let image = found.image || this.normalizeImageUrl(!homepageFallback ? ogImage : '');
-    let description = (found.description || (!homepageFallback ? ogDesc : '') || '').trim();
-    let price = found.price || '';
-    const rating = found.rating;
-    const reviews = found.reviews;
-    const store = found.store || 'TikTok Shop';
-
-    if (!title) {
-      const h1 = $('h1').first().text().trim();
-      if (h1 && h1.length > 2) title = h1;
-    }
-
-    if (!image) {
-      const ld = $('script[type="application/ld+json"]').html();
-      if (ld) {
-        try {
-          const data = JSON.parse(ld);
-          const candidate = Array.isArray(data?.image) ? data.image[0] : data?.image;
-          image = this.normalizeImageUrl(candidate);
-          if (!title && data?.name) title = String(data.name);
-          if (!description && data?.description) description = String(data.description);
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-
-    if (homepageFallback && !found.title) {
+    if (best.homepageFallback && !title && !image) {
       throw new Error(
-        'TikTok Shop returned a region-redirect homepage instead of the product page — try the canonical /shop/pdp/<id> URL, or paste details manually.'
+        'TikTok Shop served the regional homepage instead of the product page — likely an IP/region block. Paste the details manually, or hit the backend from a Singapore region.'
       );
     }
 
-    const images = (found.images && found.images.length ? found.images : image ? [image] : []).slice(0, 5);
+    const images = (best.images && best.images.length ? best.images : image ? [image] : []).slice(0, 5);
 
     const product: Product = {
       title: title || 'Product',

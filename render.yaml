@@ -3,6 +3,7 @@ services:
     name: lumora-backend
     runtime: node
     plan: free
+    region: singapore
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: npm start
