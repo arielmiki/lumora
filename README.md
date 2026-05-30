@@ -2,6 +2,13 @@
 
 Lumora is a PixVerse-powered campaign studio for marketplace sellers. Paste a product page link, get a structured multi-shot plan (one prompt per shot), generate each shot in PixVerse, then import results back into Lumora for a shoppable landing gallery.
 
+## Submission
+
+- Project Title: Lumora
+- Project Summary: A PixVerse campaign studio that turns a marketplace product link into a shot-by-shot prompt pack, lets creators generate each shot in PixVerse, and imports results into a shoppable landing gallery.
+- Target Audience: TikTok Shop and Shopee sellers (solo sellers to small businesses), plus creators/marketers who need fast product promo assets for short-form platforms.
+- Problem Being Solved: Sellers struggle to produce consistent, high-converting product videos quickly. Existing generators are slow, expensive, or require creative expertise. Lumora bridges product data → production-ready prompts → PixVerse rendering → shoppable gallery, reducing time and friction from “product page” to “publish + checkout”.
+
 ## What it does
 
 - Extracts product data from TikTok Shop and Shopee SG product links
