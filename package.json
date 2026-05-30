@@ -11,6 +11,8 @@
     "check": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@vercel/blob": "^2.4.0",
+    "@vercel/node": "^5.8.8",
     "axios": "^1.16.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.0.0",

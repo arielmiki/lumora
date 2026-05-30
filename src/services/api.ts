@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { upload } from '@vercel/blob/client';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -116,23 +117,27 @@ export const apiService = {
   },
 
   async uploadVideo(file: File, productData?: Product, pdpUrl?: string): Promise<UploadedVideo> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (productData) formData.append('productData', JSON.stringify(productData));
-    if (pdpUrl) formData.append('pdpUrl', pdpUrl);
+    const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
+    const safeTitle = (productData?.title || 'lumora-shot')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'lumora-shot';
+    const pathname = `videos/${safeTitle}-${Date.now()}.${ext}`;
 
-    const response = await api.post('/api/upload/video', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      timeout: 120000,
+    const blob = await upload(pathname, file, {
+      access: 'public',
+      handleUploadUrl: '/api/upload/video',
+      contentType: file.type || 'video/mp4',
     });
 
-    if (!response.data?.success) {
-      throw new Error(response.data?.error || 'Failed to upload video');
-    }
-
-    return response.data.video as UploadedVideo;
+    return {
+      id: blob.pathname,
+      videoUrl: blob.url,
+      downloadUrl: blob.downloadUrl || blob.url,
+      thumbnailUrl: blob.url,
+      pdpUrl,
+    };
   },
 
   async getTrends(): Promise<any[]> {
