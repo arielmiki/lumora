@@ -37,3 +37,10 @@ promo/shot*.json
 promo/shot*_done.json
 promo/shot*_submit.json
 .vercel
+
+# Local artifacts — videos belong in Vercel Blob, not git
+promo/
+backend/uploads/
+*.mp4
+*.mov
+*.webm

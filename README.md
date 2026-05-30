@@ -1,81 +1,99 @@
 # Lumora
 
-Lumora is a PixVerse-powered campaign studio for marketplace sellers. Paste a product page link, get a structured multi-shot plan (one prompt per shot), generate each shot in PixVerse, then import results back into Lumora for a shoppable landing gallery.
+PixVerse prompt builder + community marketplace showcase for ecommerce sellers.
 
-## Submission
+Lumora turns a TikTok Shop / Shopee SG product link into a ready-to-run PixVerse shot pack — prompts, captions, and reference images for every scene — then publishes the finished MP4 to a public showcase others can browse and remix.
 
-- Project Title: Lumora
-- Project Summary: A PixVerse campaign studio that turns a marketplace product link into a shot-by-shot prompt pack, lets creators generate each shot in PixVerse, and imports results into a shoppable landing gallery.
-- Target Audience: TikTok Shop and Shopee sellers (solo sellers to small businesses), plus creators/marketers who need fast product promo assets for short-form platforms.
-- Problem Being Solved: Sellers struggle to produce consistent, high-converting product videos quickly. Existing generators are slow, expensive, or require creative expertise. Lumora bridges product data → production-ready prompts → PixVerse rendering → shoppable gallery, reducing time and friction from “product page” to “publish + checkout”.
+Live: <https://uselumora.vercel.app>
 
-## What it does
+---
 
-- Extracts product data from TikTok Shop and Shopee SG product links
-- Generates a shot-by-shot prompt pack (4–8 shots, 5–8s per shot, >=30s total)
-- Keeps PixVerse usage simple:
-  - Manual workflow: copy a single shot prompt + use the extracted product image as reference
-  - Agent workflow: copy an agent-ready prompt to run PixVerse CLI + stitch shots, then upload the final MP4
-- Imports PixVerse results (link or id) and saves the PDP link so the gallery can link back to checkout
+## How it works
 
-## App flow
+1. **Paste a product link** in Studio (or skip the scraper and fill the fields manually — every field is editable).
+2. **Pick direction, duration, aspect ratio.**
+3. **Build the shot pack.** Lumora generates 4–8 PixVerse shot prompts (5–8s each, ≥30s total), with the reference image baked in.
+4. **Use it one of two ways:**
+   - **Agent (CLI prompt)** — copy a terminal-ready instruction and paste it into Claude Code or any coding agent; it runs each shot through the PixVerse CLI and stitches the result with `ffmpeg`.
+   - **Manual (Web)** — copy each shot prompt to [PixVerse](https://app.pixverse.ai), then paste the resulting links back into Lumora.
+5. **Upload the final MP4.** Drop the stitched video into the dropzone, Lumora extracts a thumbnail on the client, both land in Vercel Blob, and your film appears in the public marketplace showcase.
 
-1. Open Studio
-2. Paste product link and extract product info
-3. Generate shot pack
-4. For each shot:
-   - Copy prompt and generate in PixVerse using the reference image
-   - Paste the PixVerse link/id back into Lumora to save the shot and unlock the next one
-5. Landing page shows your saved videos with links back to the product page
+## Stack
 
-## Tech stack
-
-- Frontend: Vite + React + TypeScript, TailwindCSS, Framer Motion, Zustand
-- Backend: Express + Cheerio scraper + PixVerse resolve API + video upload endpoint
+| Layer | Tech |
+|---|---|
+| Frontend | Vite + React + TypeScript, TailwindCSS, Framer Motion, Zustand, React Router |
+| Serverless functions (uploads) | `api/upload/video.ts`, `api/upload/thumbnail.ts` using `@vercel/blob` |
+| Backend (scraper + PixVerse passthrough) | Express + Cheerio, deployed on Render |
+| Storage | Vercel Blob for uploaded MP4s + extracted thumbnails |
+| AI generation | [PixVerse CLI](https://github.com/pixverseai/pixverse-cli) |
 
 ## Local development
 
-Frontend:
+Frontend (this directory):
 
 ```bash
 npm install
-npm run dev
+npm run dev          # http://localhost:5173
 ```
 
-Backend:
+Backend (separate process, only needed for product extraction + manual-mode imports):
 
 ```bash
 cd backend
 npm install
-npm run dev
+npm run dev          # http://localhost:3001
 ```
 
-Environment variables:
+Copy the example env file and adjust to taste:
 
-```env
-VITE_API_URL=http://localhost:3001
+```bash
+cp .env.example .env
 ```
 
-## Deployment notes
+The Vercel Blob upload functions only work in production (they need `BLOB_READ_WRITE_TOKEN` provided automatically by Vercel). For local dev the rest of the app — extract, shot-pack build, CLI prompt — works without them.
 
-- Frontend can be deployed on Vercel.
-- Backend should be deployed on a server environment (Render/Fly/Railway) if you need uploads and scraping. Vercel serverless is not a good fit for persistent video storage.
+## Environment variables
 
-## Repository structure
+| Variable | Where | Description |
+|---|---|---|
+| `VITE_API_URL` | frontend | Backend base URL (e.g. `http://localhost:3001` in dev, your Render URL in prod) |
+| `VITE_APP_NAME` | frontend | Display name shown in the navbar |
+| `BLOB_READ_WRITE_TOKEN` | Vercel project env | Provided automatically when you connect a Vercel Blob store |
+| `PORT` | backend | Backend HTTP port (Render sets this automatically) |
+
+## Repository layout
 
 ```
+api/upload/             # Vercel serverless functions for Blob client uploads
+backend/                # Express scraper + PixVerse passthrough (Render)
+public/                 # Static favicon / assets
 src/
-  pages/
-    LandingPage.tsx
-    Studio.tsx
-  components/
-  stores/
-backend/
-  src/index.ts
-  src/scraper.ts
+  components/           # Navbar, shared bits
+  hooks/                # useTheme
+  lib/                  # publicImage() helper, pixversePack builder
+  pages/                # LandingPage, Studio, Gallery, Dashboard, Home
+  services/api.ts       # axios + Blob upload client
+  stores/useStore.ts    # Zustand store
+DESIGN-GUIDE.md         # Visual + interaction design reference
+render.yaml             # Render blueprint (Singapore region by default)
+vercel.json             # SPA rewrite scoped to non-/api paths
 ```
 
-## Hackathon
+## Deployment
 
-Track: Video Generation
-Project: Lumora (PixVerse campaign studio)
+- **Frontend + serverless uploads:** `vercel deploy --prod` from the repo root.
+- **Backend:** push to `main`; Render reads `render.yaml` and redeploys `lumora-backend`. The blueprint pins `region: singapore`.
+- A clean SPA rewrite (`(?!api/).*` → `index.html`) keeps `/api/upload/*` reachable as Vercel functions while everything else falls through to the SPA.
+
+## Contributing
+
+Issues and PRs welcome. Quick rules:
+
+- Keep prompts short and behaviour explicit — no dead code, no scaffolding for hypothetical features.
+- Don't commit secrets. `.env` is gitignored; use `.env.example` to add new keys.
+- Big binaries (MP4s, large images) belong in Blob storage, not the repo.
+
+## License
+
+[MIT](./LICENSE) © 2026 Lumora contributors.
