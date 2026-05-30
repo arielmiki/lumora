@@ -36,3 +36,4 @@ dist-ssr
 promo/shot*.json
 promo/shot*_done.json
 promo/shot*_submit.json
+.vercel
