@@ -1,8 +1,8 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link as RouterLink } from "react-router-dom";
-import { ArrowUpRight, Check, Copy, Download, Instagram, Play, Share2, X } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Download, Instagram, Play, Sparkles, Volume2, VolumeX, X } from "lucide-react";
 import Navbar from "../components/Navbar";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../stores/useStore";
 
 const platforms = [
@@ -23,6 +23,147 @@ const fallbackScenes = [
   "radial-gradient(120% 70% at 40% 22%,rgba(212,149,122,.45),transparent 60%),linear-gradient(160deg,#2e1d16,#140b08)",
 ];
 
+const styleFilters = ["All", "Trending", "Funny", "Emotional", "Professional"] as const;
+
+const sampleShowcase = [
+  { title: "Midnight Renewal Serum", price: "$92", style: "Professional", duration: 30, aspectRatio: "9:16", store: "Hollyhoque", tag: "Limited release" },
+  { title: "Cloud Cashmere Cardigan", price: "S$118", style: "Trending", duration: 45, aspectRatio: "9:16", store: "TikTok Shop", tag: "+312% engagement" },
+  { title: "Wildgrove Coffee Beans", price: "$24", style: "Emotional", duration: 30, aspectRatio: "9:16", store: "Shopee SG", tag: "Single origin" },
+  { title: "Glow Phone Stand", price: "S$28", style: "Funny", duration: 30, aspectRatio: "9:16", store: "TikTok Shop", tag: "Viral pick" },
+];
+
+function FilmCard({
+  film,
+  idx,
+  onSelect,
+}: {
+  film: any;
+  idx: number;
+  onSelect: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const videoSrc: string | undefined = film.metadata?.pixVerseMp4Url || film.videoUrl;
+  const poster: string | undefined = film.thumbnailUrl;
+  const gradient = fallbackScenes[idx % fallbackScenes.length];
+  const styleLabel = (film.style as string) || "Trending";
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (hovered) {
+      v.currentTime = 0;
+      void v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, [hovered]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.45, delay: Math.min(idx * 0.04, 0.32) }}
+    >
+      <button
+        onClick={onSelect}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="group relative block aspect-[9/16] w-full rounded-2xl overflow-hidden border border-line text-left transition-all duration-300 hover:border-gold/60 hover:-translate-y-1 hover:shadow-[0_22px_60px_-30px_rgba(227,189,131,0.45)] focus:outline-none focus:border-gold"
+      >
+        <div className="absolute inset-0" style={{ background: poster ? `url(${poster}) center/cover` : gradient }} />
+        {videoSrc && (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            poster={poster}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          />
+        )}
+        <div className="absolute inset-0 pointer-events-none [background:linear-gradient(180deg,rgba(0,0,0,.42)_0%,rgba(0,0,0,0)_22%,rgba(0,0,0,0)_55%,rgba(0,0,0,.72)_100%)]" />
+
+        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+          <span className="text-[9.5px] uppercase tracking-[0.16em] font-semibold px-2.5 py-1 rounded-md border border-white/25 bg-black/45 backdrop-blur text-white">
+            {styleLabel}
+          </span>
+          <span className="text-[10px] font-mono text-white/85 px-2 py-1 rounded-md bg-black/45 border border-white/15 backdrop-blur">
+            {(film.duration || 30) + "s · " + (film.aspectRatio || "9:16")}
+          </span>
+        </div>
+
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-bone/85 text-ink grid place-items-center transition-all duration-300 opacity-90 group-hover:opacity-0 group-hover:scale-75 shadow-card">
+          <Play className="w-4 h-4 fill-current" />
+        </div>
+
+        <div className="absolute bottom-3 left-3 right-3 text-white">
+          <b className="block font-display font-medium text-[15.5px] leading-[1.18] line-clamp-2 drop-shadow-[0_2px_10px_rgba(0,0,0,.55)]">
+            {film.productData?.title || "Untitled film"}
+          </b>
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-white/80">
+            <span>{film.productData?.price || ""}</span>
+            {film.productData?.store && <span className="opacity-60">·</span>}
+            {film.productData?.store && <span className="opacity-80 truncate">{film.productData.store}</span>}
+          </div>
+        </div>
+      </button>
+    </motion.div>
+  );
+}
+
+function SampleFilmCard({ film, idx }: { film: typeof sampleShowcase[number]; idx: number }) {
+  const gradient = fallbackScenes[idx % fallbackScenes.length];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.45, delay: Math.min(idx * 0.05, 0.3) }}
+    >
+      <RouterLink
+        to="/studio"
+        className="group relative block aspect-[9/16] w-full rounded-2xl overflow-hidden border border-dashed border-line2 text-left transition-all duration-300 hover:border-gold/60 hover:-translate-y-1"
+      >
+        <div className="absolute inset-0" style={{ background: gradient }} />
+        <div className="absolute inset-0 pointer-events-none [background:linear-gradient(180deg,rgba(0,0,0,.32)_0%,rgba(0,0,0,0)_28%,rgba(0,0,0,0)_55%,rgba(0,0,0,.72)_100%)]" />
+
+        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+          <span className="text-[9.5px] uppercase tracking-[0.18em] font-semibold px-2.5 py-1 rounded-md border border-gold/40 bg-gold/10 text-gold backdrop-blur">
+            Sample
+          </span>
+          <span className="text-[10px] font-mono text-white/80 px-2 py-1 rounded-md bg-black/40 border border-white/15 backdrop-blur">
+            {film.duration}s · {film.aspectRatio}
+          </span>
+        </div>
+
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <span className="w-12 h-12 rounded-full bg-gold text-ink grid place-items-center shadow-card">
+            <Sparkles className="w-5 h-5" />
+          </span>
+          <span className="text-[11px] uppercase tracking-[0.22em] font-semibold">Build like this</span>
+        </div>
+
+        <div className="absolute bottom-3 left-3 right-3 text-white">
+          <b className="block font-display font-medium text-[15.5px] leading-[1.18] drop-shadow-[0_2px_10px_rgba(0,0,0,.55)]">
+            {film.title}
+          </b>
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-white/80">
+            <span>{film.price}</span>
+            <span className="opacity-60">·</span>
+            <span className="opacity-80 truncate">{film.store}</span>
+          </div>
+          <div className="mt-1.5 text-[10px] uppercase tracking-[0.16em] text-gold/80">{film.tag}</div>
+        </div>
+      </RouterLink>
+    </motion.div>
+  );
+}
+
 const TikTokIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
@@ -33,10 +174,18 @@ export default function LandingPage() {
   const { recentProjects } = useStore();
   const [selected, setSelected] = useState<any>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [styleFilter, setStyleFilter] = useState<(typeof styleFilters)[number]>("All");
+  const [modalMuted, setModalMuted] = useState(true);
 
-  const films = useMemo(() => {
+  const allFilms = useMemo(() => {
     return recentProjects.filter((p) => p.status === "ready" && p.videoUrl).slice(0, 12);
   }, [recentProjects]);
+
+  const films = useMemo(() => {
+    if (styleFilter === "All") return allFilms;
+    const q = styleFilter.toLowerCase();
+    return allFilms.filter((f) => (f.style || "").toLowerCase() === q);
+  }, [allFilms, styleFilter]);
 
   const handleCopy = async (value: string, id: string) => {
     await navigator.clipboard.writeText(value);
@@ -191,6 +340,11 @@ export default function LandingPage() {
             <div>
               <div className="inline-flex items-center gap-3 text-[11.5px] uppercase tracking-[0.28em] font-semibold text-gold">
                 Marketplace showcase
+                {allFilms.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-md border border-gold/40 bg-gold/10 text-gold tracking-[0.18em] text-[10px] normal-case">
+                    {allFilms.length} live
+                  </span>
+                )}
               </div>
               <h2 className="mt-4 font-display font-medium text-[clamp(30px,4.4vw,52px)]">
                 PixVerse films from the community
@@ -199,15 +353,58 @@ export default function LandingPage() {
                 Browse, preview, and remix PixVerse renders other creators have published from TikTok Shop and Shopee product pages.
               </p>
             </div>
+
+            {allFilms.length >= 3 && (
+              <div className="flex flex-wrap gap-2">
+                {styleFilters.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStyleFilter(s)}
+                    className={[
+                      "px-3.5 py-1.5 rounded-full text-[12px] font-medium tracking-[0.02em] transition-colors border",
+                      styleFilter === s
+                        ? "bg-gold text-ink border-gold"
+                        : "bg-ink-2 text-bone-dim border-line hover:border-line2 hover:text-bone",
+                    ].join(" ")}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {films.length === 0 ? (
-            <div className="mt-10 card p-10 text-center">
-              <div className="font-display font-medium text-[22px]">Showcase is empty</div>
+          {allFilms.length === 0 ? (
+            <>
+              <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-5">
+                {sampleShowcase.map((film, idx) => (
+                  <SampleFilmCard key={film.title} film={film} idx={idx} />
+                ))}
+              </div>
+              <div className="mt-10 card p-8 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+                <div>
+                  <div className="font-display font-medium text-[20px]">Showcase your first render</div>
+                  <div className="mt-1.5 text-[14px] text-bone-dim max-w-lg">
+                    These are samples. Drop a TikTok Shop or Shopee link in Studio and your real film lands here, ready for the community to remix.
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <RouterLink to="/studio" className="btn-primary">
+                    Open prompt builder <ArrowUpRight className="w-4 h-4" />
+                  </RouterLink>
+                </div>
+              </div>
+            </>
+          ) : films.length === 0 ? (
+            <div className="mt-12 card p-10 text-center">
+              <div className="font-display font-medium text-[20px]">No {styleFilter.toLowerCase()} films yet</div>
               <div className="mt-2 text-[14px] text-bone-dim max-w-md mx-auto">
-                Paste a marketplace product link in Studio, build a PixVerse shot pack, and your render lands here.
+                Pick a different style filter or build the first one yourself.
               </div>
               <div className="mt-6 flex justify-center gap-3">
+                <button onClick={() => setStyleFilter("All")} className="btn-outline">
+                  Show all
+                </button>
                 <RouterLink to="/studio" className="btn-primary">
                   Open prompt builder <ArrowUpRight className="w-4 h-4" />
                 </RouterLink>
@@ -215,39 +412,9 @@ export default function LandingPage() {
             </div>
           ) : (
             <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-5">
-              {films.map((p, idx) => {
-                const bg = p.thumbnailUrl ? `url(${p.thumbnailUrl}) center/cover` : fallbackScenes[idx % fallbackScenes.length];
-                return (
-                  <motion.div
-                    key={p.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.45, delay: idx * 0.03 }}
-                  >
-                    <button
-                      onClick={() => setSelected(p)}
-                      className="group relative block aspect-[9/16] w-full rounded-2xl overflow-hidden border border-line hover:border-line2 transition-transform duration-200 hover:-translate-y-1 text-left"
-                    >
-                      <div className="absolute inset-0" style={{ background: bg }} />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-between [background:linear-gradient(180deg,rgba(0,0,0,.32),transparent_30%,transparent_58%,rgba(0,0,0,.60))]">
-                        <span className="self-start text-[9px] uppercase tracking-[0.16em] font-semibold px-2.5 py-1 rounded-md border border-white/20 bg-black/40 backdrop-blur">
-                          {p.style}
-                        </span>
-                        <div>
-                          <b className="block font-display font-medium text-[16px] text-white line-clamp-2">
-                            {p.productData?.title || "Untitled film"}
-                          </b>
-                          <small className="text-[11px] text-white/75">{p.productData?.price || ""}</small>
-                        </div>
-                      </div>
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-bone text-ink grid place-items-center opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all">
-                        <Share2 className="w-5 h-5" />
-                      </div>
-                    </button>
-                  </motion.div>
-                );
-              })}
+              {films.map((p, idx) => (
+                <FilmCard key={p.id} film={p} idx={idx} onSelect={() => setSelected(p)} />
+              ))}
             </div>
           )}
         </section>
@@ -270,96 +437,137 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {selected && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-4xl bg-surface border border-line rounded-3xl overflow-hidden">
-            <div className="p-6 border-b border-line flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="font-display font-medium text-[18px] truncate">{selected.productData?.title || "Untitled film"}</div>
-                <div className="mt-1 text-[12.5px] text-bone-dim truncate">{selected.productData?.price || ""}</div>
-              </div>
-              <button onClick={() => setSelected(null)} className="p-2 rounded-xl hover:bg-white/5 transition-colors text-bone-dim hover:text-bone">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid lg:grid-cols-[1fr_380px]">
-              <div className="bg-black">
-                <div className="aspect-[9/16] max-h-[78vh] mx-auto">
-                  <video
-                    key={selected.videoUrl || selected.metadata?.pixVerseUrl}
-                    src={selected.metadata?.pixVerseMp4Url || selected.videoUrl || selected.metadata?.pixVerseUrl}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-cover"
-                    poster={selected.thumbnailUrl}
-                  />
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Actions</div>
-
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href={selected.downloadUrl || selected.videoUrl}
-                    className="btn-primary btn-sm"
-                    download
-                  >
-                    <Download className="w-4 h-4" />
-                    Download
-                  </a>
-                  {(selected.metadata?.pdpUrl || selected.productUrl || selected.productData?.url) && (
-                    <a
-                      href={selected.metadata?.pdpUrl || selected.productUrl || selected.productData?.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-dark btn-sm"
-                    >
-                      Checkout <ArrowUpRight className="w-4 h-4" />
-                    </a>
-                  )}
-                  <RouterLink to={`/studio?campaignId=${encodeURIComponent(selected.id)}`} className="btn-outline btn-sm">
-                    Open in studio <ArrowUpRight className="w-4 h-4" />
-                  </RouterLink>
-                </div>
-
-                <div className="pt-2">
-                  <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted mb-3">Share</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => handleShare("tiktok", selected)} className="flex items-center gap-3 p-4 rounded-2xl border border-line bg-ink-2 hover:border-line2 transition-colors">
-                      <span className="w-10 h-10 rounded-xl bg-black text-white grid place-items-center">
-                        <TikTokIcon className="w-5 h-5" />
-                      </span>
-                      <span className="font-medium">TikTok</span>
-                    </button>
-                    <button onClick={() => handleShare("instagram", selected)} className="flex items-center gap-3 p-4 rounded-2xl border border-line bg-ink-2 hover:border-line2 transition-colors">
-                      <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6d28d9] via-[#db2777] to-[#f59e0b] text-white grid place-items-center">
-                        <Instagram className="w-5 h-5" />
-                      </span>
-                      <span className="font-medium">Instagram</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted mb-3">Copy download link</div>
-                  <div className="flex gap-3">
-                    <input value={selected.downloadUrl || selected.videoUrl} readOnly className="input text-[13px]" />
+      <AnimatePresence>
+        {selected && (
+          <motion.div
+            key="film-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setSelected(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 8 }}
+              transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-5xl bg-surface border border-line rounded-3xl overflow-hidden shadow-[0_30px_120px_-20px_rgba(0,0,0,0.6)]"
+            >
+              <div className="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <div className="relative bg-black">
+                  <div className="aspect-[9/16] max-h-[82vh] mx-auto relative">
+                    <video
+                      key={selected.videoUrl || selected.metadata?.pixVerseUrl}
+                      src={selected.metadata?.pixVerseMp4Url || selected.videoUrl || selected.metadata?.pixVerseUrl}
+                      controls
+                      autoPlay
+                      muted={modalMuted}
+                      playsInline
+                      className="w-full h-full object-cover"
+                      poster={selected.thumbnailUrl}
+                    />
                     <button
-                      onClick={() => handleCopy(selected.downloadUrl || selected.videoUrl, selected.id)}
-                      className="btn-primary"
+                      onClick={() => setModalMuted((m) => !m)}
+                      className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/55 backdrop-blur border border-white/15 text-white grid place-items-center hover:bg-black/75 transition-colors"
+                      aria-label={modalMuted ? "Unmute" : "Mute"}
                     >
-                      {copiedId === selected.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copiedId === selected.id ? "Copied" : "Copy"}
+                      {modalMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
+
+                <div className="flex flex-col max-h-[82vh]">
+                  <div className="p-5 border-b border-line flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[9.5px] uppercase tracking-[0.18em] font-semibold px-2 py-0.5 rounded-md border border-gold/40 bg-gold/10 text-gold">
+                          {selected.style || "Trending"}
+                        </span>
+                        <span className="text-[10.5px] font-mono text-bone-dim px-2 py-0.5 rounded-md border border-line bg-ink-2">
+                          {(selected.duration || 30) + "s · " + (selected.aspectRatio || "9:16")}
+                        </span>
+                      </div>
+                      <div className="font-display font-medium text-[20px] leading-tight">{selected.productData?.title || "Untitled film"}</div>
+                      <div className="mt-1 text-[13px] text-bone-dim truncate">
+                        {selected.productData?.price || ""}
+                        {selected.productData?.store && <span className="opacity-60"> · {selected.productData.store}</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelected(null)}
+                      className="p-2 rounded-xl hover:bg-white/5 transition-colors text-bone-dim hover:text-bone flex-shrink-0"
+                      aria-label="Close"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="p-5 space-y-5 overflow-y-auto">
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={selected.downloadUrl || selected.videoUrl}
+                        className="btn-primary btn-sm"
+                        download
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
+                      </a>
+                      <RouterLink to={`/studio?campaignId=${encodeURIComponent(selected.id)}`} className="btn-dark btn-sm">
+                        <Sparkles className="w-4 h-4" />
+                        Remix in studio
+                      </RouterLink>
+                      {(selected.metadata?.pdpUrl || selected.productUrl || selected.productData?.url) && (
+                        <a
+                          href={selected.metadata?.pdpUrl || selected.productUrl || selected.productData?.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-outline btn-sm"
+                        >
+                          Product page <ArrowUpRight className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="text-[10.5px] uppercase tracking-[0.22em] font-semibold text-muted mb-2.5">Share</div>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button onClick={() => handleShare("tiktok", selected)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-line bg-ink-2 hover:border-line2 transition-colors">
+                          <span className="w-8 h-8 rounded-lg bg-black text-white grid place-items-center">
+                            <TikTokIcon className="w-4 h-4" />
+                          </span>
+                          <span className="font-medium text-[13px]">TikTok</span>
+                        </button>
+                        <button onClick={() => handleShare("instagram", selected)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-line bg-ink-2 hover:border-line2 transition-colors">
+                          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6d28d9] via-[#db2777] to-[#f59e0b] text-white grid place-items-center">
+                            <Instagram className="w-4 h-4" />
+                          </span>
+                          <span className="font-medium text-[13px]">Instagram</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10.5px] uppercase tracking-[0.22em] font-semibold text-muted mb-2.5">Copy download link</div>
+                      <div className="flex gap-2">
+                        <input value={selected.downloadUrl || selected.videoUrl} readOnly className="input text-[12.5px]" />
+                        <button
+                          onClick={() => handleCopy(selected.downloadUrl || selected.videoUrl, selected.id)}
+                          className="btn-primary btn-sm flex-shrink-0"
+                        >
+                          {copiedId === selected.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copiedId === selected.id ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       <footer className="border-t border-line py-16">
         <div className="container mx-auto px-6">

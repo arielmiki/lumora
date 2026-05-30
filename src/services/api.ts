@@ -3,6 +3,73 @@ import { upload } from '@vercel/blob/client';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
+async function extractVideoThumbnail(file: File, maxWidth = 720): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.src = url;
+
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      video.removeAttribute('src');
+      video.load();
+    };
+
+    const fail = (msg: string) => {
+      cleanup();
+      reject(new Error(msg));
+    };
+
+    const timeout = window.setTimeout(() => fail('Thumbnail extraction timed out'), 15000);
+
+    video.addEventListener('error', () => fail('Video failed to load'), { once: true });
+
+    video.addEventListener(
+      'loadedmetadata',
+      () => {
+        const seekTo = Math.min(Math.max(video.duration * 0.1, 0.5), 1.2);
+        video.currentTime = isFinite(seekTo) ? seekTo : 0;
+      },
+      { once: true }
+    );
+
+    video.addEventListener(
+      'seeked',
+      () => {
+        try {
+          const srcW = video.videoWidth || 720;
+          const srcH = video.videoHeight || 1280;
+          const scale = Math.min(1, maxWidth / srcW);
+          const w = Math.round(srcW * scale);
+          const h = Math.round(srcH * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return fail('Canvas 2D context unavailable');
+          ctx.drawImage(video, 0, 0, w, h);
+          canvas.toBlob(
+            (blob) => {
+              window.clearTimeout(timeout);
+              cleanup();
+              if (!blob) return reject(new Error('Canvas returned empty blob'));
+              resolve(blob);
+            },
+            'image/jpeg',
+            0.85
+          );
+        } catch (e) {
+          fail((e as Error).message);
+        }
+      },
+      { once: true }
+    );
+  });
+}
+
 console.log('API Base URL:', API_BASE_URL);
 
 const api = axios.create({
@@ -123,19 +190,36 @@ export const apiService = {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 48) || 'lumora-shot';
-    const pathname = `videos/${safeTitle}-${Date.now()}.${ext}`;
+    const stamp = Date.now();
+    const videoPath = `videos/${safeTitle}-${stamp}.${ext}`;
 
-    const blob = await upload(pathname, file, {
-      access: 'public',
-      handleUploadUrl: '/api/upload/video',
-      contentType: file.type || 'video/mp4',
-    });
+    let thumbBlob: Blob | null = null;
+    try {
+      thumbBlob = await extractVideoThumbnail(file);
+    } catch (e) {
+      console.warn('Thumbnail extraction failed; falling back to video URL.', e);
+    }
+
+    const [videoUploaded, thumbUploaded] = await Promise.all([
+      upload(videoPath, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload/video',
+        contentType: file.type || 'video/mp4',
+      }),
+      thumbBlob
+        ? upload(`thumbnails/${safeTitle}-${stamp}.jpg`, thumbBlob, {
+            access: 'public',
+            handleUploadUrl: '/api/upload/thumbnail',
+            contentType: 'image/jpeg',
+          })
+        : Promise.resolve(null),
+    ]);
 
     return {
-      id: blob.pathname,
-      videoUrl: blob.url,
-      downloadUrl: blob.downloadUrl || blob.url,
-      thumbnailUrl: blob.url,
+      id: videoUploaded.pathname,
+      videoUrl: videoUploaded.url,
+      downloadUrl: videoUploaded.downloadUrl || videoUploaded.url,
+      thumbnailUrl: thumbUploaded?.url || videoUploaded.url,
       pdpUrl,
     };
   },
