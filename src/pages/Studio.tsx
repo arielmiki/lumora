@@ -1,11 +1,40 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, ArrowUpRight, Check, Copy, Download, Loader2, Sparkles, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowUpRight, Check, Copy, Download, FileVideo, ImagePlus, Loader2, Pencil, PlusCircle, Sparkles, Terminal, Upload, X } from 'lucide-react';
 import { apiService, Product, UploadedVideo } from '../services/api';
 import { useStore } from '../stores/useStore';
 import { buildPixVerseShotPack, PixVerseStyle } from '../lib/pixversePack';
 import { publicImage } from '../lib/utils';
+
+function emptyProduct(): Product {
+  return {
+    title: '',
+    description: '',
+    price: '',
+    currency: 'SGD',
+    image: '',
+    images: [],
+    store: '',
+    url: '',
+  };
+}
+
+function StepBadge({ n, label, done, active }: { n: number; label: string; done?: boolean; active?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className={[
+          'w-7 h-7 rounded-full grid place-items-center text-[11.5px] font-semibold border transition-colors',
+          done ? 'bg-gold/15 text-gold border-gold/45' : active ? 'bg-gold text-ink border-gold' : 'bg-ink-2 text-bone-dim border-line',
+        ].join(' ')}
+      >
+        {done ? <Check className="w-3.5 h-3.5" /> : n}
+      </span>
+      <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">{label}</span>
+    </div>
+  );
+}
 
 export default function Studio() {
   const [searchParams] = useSearchParams();
@@ -37,6 +66,16 @@ export default function Studio() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedVideo, setUploadedVideo] = useState<UploadedVideo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const updateProduct = (patch: Partial<Product>) => {
+    setCurrentProduct((prev) => ({ ...(prev || emptyProduct()), ...patch }));
+  };
+
+  const hasProductDetails = Boolean(
+    currentProduct && (currentProduct.title?.trim() || currentProduct.price?.trim() || currentProduct.image?.trim())
+  );
 
   const campaignId = searchParams.get('campaignId') || '';
 
@@ -301,8 +340,8 @@ export default function Studio() {
             <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
               <div className="card p-6">
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="font-display font-medium text-[19px]">Product</h2>
-                  <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Paste a link</span>
+                  <StepBadge n={1} label="Product" active={!hasProductDetails} done={hasProductDetails} />
+                  <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Paste, or fill it in</span>
                 </div>
 
                 <div className="flex gap-3">
@@ -328,37 +367,106 @@ export default function Studio() {
                   </button>
                 </div>
 
+                {!currentProduct && !isExtracting && (
+                  <button
+                    onClick={() => setCurrentProduct(emptyProduct())}
+                    className="mt-4 w-full rounded-2xl border border-dashed border-line2 bg-ink-2 hover:border-gold/50 hover:bg-ink/60 transition-colors px-4 py-3.5 flex items-center justify-center gap-2 text-[13px] text-bone-dim"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    Or add product details manually
+                  </button>
+                )}
+
                 {currentProduct && !isExtracting && (
-                  <div className="mt-5 rounded-2xl border border-line bg-ink-2 p-4">
+                  <div className="mt-5 rounded-2xl border border-line bg-ink-2 p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">
+                        <Pencil className="w-3.5 h-3.5" />
+                        Details (editable)
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCurrentProduct(null);
+                          setProductUrl('');
+                          setPromptPack(null);
+                          setShotRenders([]);
+                        }}
+                        className="text-[11px] text-muted hover:text-bone transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
+
                     <div className="flex gap-4">
                       {currentProduct.image ? (
-                        <img src={publicImage(currentProduct.image)} alt={currentProduct.title} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 bg-ink" />
+                        <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 group">
+                          <img src={publicImage(currentProduct.image)} alt={currentProduct.title || 'Product'} className="w-full h-full object-cover bg-ink" />
+                          <button
+                            onClick={() => updateProduct({ image: '' })}
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center text-white text-[10.5px] uppercase tracking-[0.18em] font-semibold"
+                          >
+                            Replace
+                          </button>
+                        </div>
                       ) : (
-                        <div className="w-20 h-20 rounded-xl bg-ink border border-line2 flex items-center justify-center text-[10px] uppercase tracking-[0.18em] text-muted flex-shrink-0">No image</div>
+                        <label className="w-24 h-24 rounded-xl border border-dashed border-line2 hover:border-gold/50 bg-ink flex flex-col items-center justify-center text-[10px] uppercase tracking-[0.18em] text-muted flex-shrink-0 cursor-text gap-1">
+                          <ImagePlus className="w-4 h-4" />
+                          Paste URL ↓
+                        </label>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display font-medium text-bone truncate">{currentProduct.title}</div>
-                        <div className="mt-1 text-[13px] text-bone-dim">{currentProduct.price}</div>
-                        <div className="mt-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] font-semibold text-muted">
-                          <span className="px-2 py-1 rounded-md border border-line2 bg-surface-2 text-bone-dim normal-case tracking-normal font-medium text-[12px]">
-                            {currentProduct.store}
-                          </span>
-                          {currentProduct.rating && (
-                            <span className="text-gold normal-case tracking-normal font-medium text-[12px]">
-                              {currentProduct.rating} ({currentProduct.reviews})
-                            </span>
-                          )}
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <input
+                          value={currentProduct.title}
+                          onChange={(e) => updateProduct({ title: e.target.value })}
+                          placeholder="Product name (e.g. Work to Wine Midi Skirt)"
+                          className="input text-[14px] font-display font-medium"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            value={currentProduct.price}
+                            onChange={(e) => updateProduct({ price: e.target.value })}
+                            placeholder="Price · S$48.90"
+                            className="input text-[13px]"
+                          />
+                          <input
+                            value={currentProduct.store || ''}
+                            onChange={(e) => updateProduct({ store: e.target.value })}
+                            placeholder="Store · Hollyhoque"
+                            className="input text-[13px]"
+                          />
                         </div>
                       </div>
                     </div>
+
+                    {!currentProduct.image && (
+                      <input
+                        value={currentProduct.image}
+                        onChange={(e) => updateProduct({ image: e.target.value.trim() })}
+                        placeholder="Paste a product image URL (TikTok / Shopee / Imgur)…"
+                        className="input text-[12.5px]"
+                      />
+                    )}
+
+                    <textarea
+                      value={currentProduct.description}
+                      onChange={(e) => updateProduct({ description: e.target.value })}
+                      placeholder="Short description or key features (used to tailor every shot prompt)"
+                      className="input min-h-[68px] text-[12.5px] leading-[1.45]"
+                    />
+
+                    {(currentProduct.rating || currentProduct.reviews) && (
+                      <div className="text-[11.5px] text-gold">
+                        ★ {currentProduct.rating || '—'}{currentProduct.reviews ? ` · ${currentProduct.reviews} reviews` : ''}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
               <div className="card p-6">
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="font-display font-medium text-[19px]">Direction</h2>
-                  <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Choose a tone</span>
+                  <StepBadge n={2} label="Direction" active={hasProductDetails && !promptPack} done={Boolean(promptPack)} />
+                  <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Tone, length, ratio</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -366,11 +474,11 @@ export default function Studio() {
                     <button
                       key={s.id}
                       onClick={() => setStyle(s.id)}
-                      disabled={!currentProduct}
+                      disabled={!hasProductDetails}
                       className={[
                         "rounded-xl border px-4 py-3 text-left transition-colors",
                         style === s.id ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2",
-                        !currentProduct ? "opacity-60" : "",
+                        !hasProductDetails ? "opacity-50 cursor-not-allowed" : "",
                       ].join(" ")}
                     >
                       <div className="text-[14px]">{s.name}</div>
@@ -378,60 +486,72 @@ export default function Studio() {
                     </button>
                   ))}
                 </div>
-              </div>
 
-              <div className="grid sm:grid-cols-2 gap-5">
-                <div className="card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-display font-medium text-[19px]">Duration</h2>
-                    <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Seconds</span>
+                <div className="mt-5 grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted mb-2">Duration</div>
+                    <div className="flex gap-2">
+                      {durations.map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setDuration(d)}
+                          disabled={!hasProductDetails}
+                          className={[
+                            "flex-1 rounded-xl border px-3 py-2 text-[13px] transition-colors",
+                            duration === d ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2",
+                            !hasProductDetails ? "opacity-50 cursor-not-allowed" : "",
+                          ].join(" ")}
+                        >
+                          {d}s
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    {durations.map((d) => (
-                      <button
-                        key={d}
-                        onClick={() => setDuration(d)}
-                        disabled={!currentProduct}
-                        className={[
-                          "flex-1 rounded-xl border px-4 py-2 text-[13px] transition-colors",
-                          duration === d ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2",
-                          !currentProduct ? "opacity-60" : "",
-                        ].join(" ")}
-                      >
-                        {d}s
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-display font-medium text-[19px]">Ratio</h2>
-                    <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Format</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {ratios.map((r) => (
-                      <button
-                        key={r.id}
-                        onClick={() => setAspectRatio(r.id)}
-                        disabled={!currentProduct}
-                        className={[
-                          "flex-1 rounded-xl border px-4 py-2 text-[13px] transition-colors",
-                          aspectRatio === r.id ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2",
-                          !currentProduct ? "opacity-60" : "",
-                        ].join(" ")}
-                      >
-                        {r.id}
-                      </button>
-                    ))}
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted mb-2">Aspect ratio</div>
+                    <div className="flex gap-2">
+                      {ratios.map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => setAspectRatio(r.id)}
+                          disabled={!hasProductDetails}
+                          className={[
+                            "flex-1 rounded-xl border px-3 py-2 text-[12.5px] transition-colors",
+                            aspectRatio === r.id ? "bg-gold text-ink border-gold font-semibold" : "bg-ink-2 text-bone-dim border-line hover:border-line2",
+                            !hasProductDetails ? "opacity-50 cursor-not-allowed" : "",
+                          ].join(" ")}
+                        >
+                          <div className="font-semibold">{r.id}</div>
+                          <div className={aspectRatio === r.id ? "text-[10.5px] text-ink/70 mt-0.5" : "text-[10.5px] text-muted mt-0.5"}>{r.name}</div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <button onClick={handleGeneratePack} disabled={!currentProduct} className="btn-primary w-full">
-                <Sparkles className="w-4 h-4" />
-                Generate PixVerse shot pack
-              </button>
+              <div className="card p-5 flex items-center gap-4">
+                <StepBadge n={3} label={promptPack ? 'Shot pack ready' : 'Build prompt'} active={hasProductDetails && !promptPack} done={Boolean(promptPack)} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12.5px] text-bone-dim">
+                    {hasProductDetails ? (
+                      <>
+                        <span className="text-bone font-medium">{(promptPack?.shotCount || Math.round(duration / 6)) + ' shots'}</span>
+                        <span> · {(promptPack?.plannedDuration || duration)}s total</span>
+                        <span> · {style}</span>
+                        <span> · {aspectRatio}</span>
+                      </>
+                    ) : (
+                      <span>Fill product details to unlock.</span>
+                    )}
+                  </div>
+                </div>
+                <button onClick={handleGeneratePack} disabled={!hasProductDetails} className="btn-primary flex-shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                  {promptPack ? 'Rebuild' : 'Build pack'}
+                </button>
+              </div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
@@ -458,126 +578,86 @@ export default function Studio() {
                   </button>
                 </div>
 
-                {mode === "agent" && (
-                  <div className="rounded-2xl border border-line bg-ink-2 p-5">
-                    <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted mb-3">Agent runner prompt</div>
-                    <div className="text-[13px] text-bone-dim">
-                      Copy this instruction into Claude Code or your preferred coding agent to render all shots via PixVerse CLI and return the final MP4 URL.
-                    </div>
-
-                    {!promptPack ? (
-                      <div className="mt-4 rounded-2xl border border-line bg-ink p-4 text-[13px] text-bone-dim">
-                        Generate a shot pack first, then this tab will provide an agent-ready CLI instruction.
-                      </div>
-                    ) : (
-                      <div className="mt-4">
-                        <textarea
-                          readOnly
-                          className="input min-h-[260px] text-[13px] leading-[1.5]"
-                          value={[
-                            "You are running in a local dev environment with PixVerse CLI installed.",
-                            "Goal: generate a product promo as multiple shots (one shot per PixVerse generation), then stitch into one MP4.",
-                            "",
-                            "Constraints:",
-                            "- Use 9:16 unless otherwise specified.",
-                            "- 5–8s per shot, 4–8 shots, total >= 30s.",
-                            "- Use the provided product image as reference input for every shot (upload or --image URL).",
-                            "- Keep product appearance consistent across shots.",
-                            "",
-                            currentProduct?.image ? `Product image URL: ${publicImage(currentProduct.image)}` : "Product image URL: (not provided)",
-                            pdpUrl ? `Product page (PDP): ${pdpUrl}` : "Product page (PDP): (not provided)",
-                            "",
-                            "Shot prompts (run each as its own PixVerse generation):",
-                            ...promptPack.shotPrompts.map((s) => `\n[SHOT ${s.index}] (${s.suggestedDuration}s, ${s.aspectRatio})\n${s.pixVersePrompt}`),
-                            "",
-                            "After generating all shots:",
-                            "- Pick best take(s) per shot (seed0 is fine for draft).",
-                            "- Stitch in order with simple cuts (or light transitions) using ffmpeg into final.mp4.",
-                            "- Return: (1) final.mp4 local path or public URL, (2) list of shot mp4 URLs, (3) the exact commands used.",
-                          ].join("\n")}
-                        />
-                        <div className="mt-3 flex gap-2">
-                          <button
-                            onClick={() => {
-                              const value = ([
-                                "You are running in a local dev environment with PixVerse CLI installed.",
-                                "Goal: generate a product promo as multiple shots (one shot per PixVerse generation), then stitch into one MP4.",
-                                "",
-                                "Constraints:",
-                                "- Use 9:16 unless otherwise specified.",
-                                "- 5–8s per shot, 4–8 shots, total >= 30s.",
-                                "- Use the provided product image as reference input for every shot (upload or --image URL).",
-                                "- Keep product appearance consistent across shots.",
-                                "",
-                                currentProduct?.image ? `Product image URL: ${publicImage(currentProduct.image)}` : "Product image URL: (not provided)",
-                                pdpUrl ? `Product page (PDP): ${pdpUrl}` : "Product page (PDP): (not provided)",
-                                "",
-                                "Shot prompts (run each as its own PixVerse generation):",
-                                ...promptPack.shotPrompts.map((s) => `\n[SHOT ${s.index}] (${s.suggestedDuration}s, ${s.aspectRatio})\n${s.pixVersePrompt}`),
-                                "",
-                                "After generating all shots:",
-                                "- Pick best take(s) per shot (seed0 is fine for draft).",
-                                "- Stitch in order with simple cuts (or light transitions) using ffmpeg into final.mp4.",
-                                "- Return: (1) final.mp4 local path or public URL, (2) list of shot mp4 URLs, (3) the exact commands used.",
-                              ].join("\n"));
-                              handleCopy(value, "agent");
-                            }}
-                            className="btn-primary btn-sm"
-                          >
-                            {copied === "agent" ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                            {copied === "agent" ? "Copied" : "Copy agent prompt"}
-                          </button>
-                          <a href="https://app.pixverse.ai/" target="_blank" rel="noreferrer" className="btn-outline btn-sm">
-                            Open PixVerse <ArrowUpRight className="w-4 h-4" />
-                          </a>
+                {mode === "agent" && (() => {
+                  const agentPrompt = promptPack
+                    ? [
+                        "You are running in a local dev environment with PixVerse CLI installed.",
+                        "Goal: generate a product promo as multiple shots (one shot per PixVerse generation), then stitch into one MP4.",
+                        "",
+                        "Constraints:",
+                        "- Use 9:16 unless otherwise specified.",
+                        "- 5–8s per shot, 4–8 shots, total >= 30s.",
+                        "- Use the provided product image as reference input for every shot (upload or --image URL).",
+                        "- Keep product appearance consistent across shots.",
+                        "",
+                        currentProduct?.image ? `Product image URL: ${publicImage(currentProduct.image)}` : "Product image URL: (not provided)",
+                        pdpUrl ? `Product page (PDP): ${pdpUrl}` : "Product page (PDP): (not provided)",
+                        "",
+                        "Shot prompts (run each as its own PixVerse generation):",
+                        ...promptPack.shotPrompts.map((s) => `\n[SHOT ${s.index}] (${s.suggestedDuration}s, ${s.aspectRatio})\n${s.pixVersePrompt}`),
+                        "",
+                        "After generating all shots:",
+                        "- Pick best take(s) per shot (seed0 is fine for draft).",
+                        "- Stitch in order with simple cuts (or light transitions) using ffmpeg into final.mp4.",
+                        "- Return: (1) final.mp4 local path or public URL, (2) list of shot mp4 URLs, (3) the exact commands used.",
+                      ].join("\n")
+                    : "";
+                  return (
+                    <div className="rounded-2xl border border-line bg-ink-2 p-5">
+                      {!promptPack ? (
+                        <div className="rounded-xl border border-dashed border-line2 bg-ink p-6 text-center text-[13px] text-bone-dim">
+                          <Terminal className="w-5 h-5 mx-auto mb-2 text-muted" />
+                          Build a shot pack first — the agent-ready prompt will land here.
                         </div>
-
-                        <div className="mt-5 pt-5 border-t border-line space-y-3">
-                          <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Upload final MP4</div>
-                          <div className="text-[13px] text-bone-dim">
-                            After your coding agent generates the final video, upload it here to save into the landing gallery.
+                      ) : (
+                        <>
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                              <div className="font-display font-medium text-[15.5px] flex items-center gap-2">
+                                <Terminal className="w-4 h-4 text-gold" />
+                                Agent runner prompt
+                              </div>
+                              <div className="mt-1 text-[12.5px] text-bone-dim max-w-md">
+                                Paste into Claude Code (or any coding agent) — it'll run each shot through the PixVerse CLI and stitch a final.mp4.
+                              </div>
+                            </div>
+                            <button onClick={() => handleCopy(agentPrompt, "agent")} className="btn-primary btn-sm flex-shrink-0">
+                              {copied === "agent" ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                              {copied === "agent" ? "Copied" : "Copy"}
+                            </button>
                           </div>
 
-                          <div className="flex flex-col gap-3">
-                            <input
-                              type="file"
-                              accept="video/mp4,video/*"
-                              onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                              className="input"
-                            />
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                onClick={handleUploadFinalVideo}
-                                disabled={!uploadFile || isUploading || !currentProduct}
-                                className="btn-primary btn-sm"
-                              >
-                                {isUploading ? (
-                                  <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Uploading
-                                  </>
-                                ) : (
-                                  <>
-                                    <Download className="w-4 h-4" />
-                                    Upload video
-                                  </>
-                                )}
-                              </button>
-                              {uploadFile && (
-                                <span className="text-[12px] text-muted self-center">{uploadFile.name}</span>
-                              )}
-                              {uploadedVideo?.videoUrl && (
-                                <a href={uploadedVideo.videoUrl} target="_blank" rel="noreferrer" className="btn-outline btn-sm">
-                                  Open uploaded <ArrowUpRight className="w-4 h-4" />
-                                </a>
-                              )}
+                          <div className="relative rounded-xl border border-line bg-[#0f0a06] overflow-hidden">
+                            <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-black/30">
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]/70" />
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]/70" />
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]/70" />
+                              <span className="ml-2 text-[10.5px] uppercase tracking-[0.2em] text-muted font-mono">claude_code · pixverse</span>
+                            </div>
+                            <pre className="max-h-[320px] overflow-auto px-4 py-3 text-[12px] leading-[1.55] text-bone-dim font-mono whitespace-pre-wrap">
+{agentPrompt}
+                            </pre>
+                          </div>
+
+                          <div className="mt-3 grid sm:grid-cols-3 gap-2 text-[11.5px] text-bone-dim">
+                            <div className="rounded-xl border border-line bg-ink p-3">
+                              <div className="text-gold font-semibold mb-0.5">1 · Copy</div>
+                              The full prompt above — image URL is baked in.
+                            </div>
+                            <div className="rounded-xl border border-line bg-ink p-3">
+                              <div className="text-gold font-semibold mb-0.5">2 · Run</div>
+                              Paste into Claude Code; it generates + stitches.
+                            </div>
+                            <div className="rounded-xl border border-line bg-ink p-3">
+                              <div className="text-gold font-semibold mb-0.5">3 · Upload</div>
+                              Drop the final.mp4 into Step 5 to publish.
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {mode === "manual" && promptPack && (
                   <div className="mt-6 rounded-2xl border border-line bg-ink-2 p-5 space-y-4">
@@ -743,6 +823,151 @@ export default function Studio() {
                   </div>
                 )}
               </div>
+
+              {promptPack && (
+                <div className="card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <StepBadge n={5} label="Publish" active={!uploadedVideo} done={Boolean(uploadedVideo)} />
+                    <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-muted">Final MP4 → showcase</span>
+                  </div>
+
+                  {!uploadedVideo ? (
+                    <>
+                      <label
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDraggingFile(true);
+                        }}
+                        onDragLeave={() => setIsDraggingFile(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDraggingFile(false);
+                          const f = e.dataTransfer.files?.[0];
+                          if (f && f.type.startsWith('video/')) setUploadFile(f);
+                        }}
+                        className={[
+                          'block rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors',
+                          isDraggingFile ? 'border-gold bg-gold/10' : 'border-line2 bg-ink-2 hover:border-gold/40 hover:bg-ink/80',
+                        ].join(' ')}
+                      >
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="video/mp4,video/quicktime,video/*"
+                          className="hidden"
+                          onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                        />
+                        {uploadFile ? (
+                          <div className="flex items-center gap-3 text-left">
+                            <div className="w-12 h-12 rounded-xl bg-gold/15 text-gold grid place-items-center flex-shrink-0">
+                              <FileVideo className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-bone truncate">{uploadFile.name}</div>
+                              <div className="text-[12px] text-muted">
+                                {(uploadFile.size / 1024 / 1024).toFixed(1)} MB · {uploadFile.type || 'video/mp4'}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setUploadFile(null);
+                                if (fileInputRef.current) fileInputRef.current.value = '';
+                              }}
+                              className="text-[11.5px] text-muted hover:text-bone transition-colors flex-shrink-0"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="w-12 h-12 rounded-2xl bg-ink border border-line2 grid place-items-center mx-auto mb-3 text-bone-dim">
+                              <Upload className="w-5 h-5" />
+                            </div>
+                            <div className="font-display font-medium text-[15px]">Drop your final.mp4 here</div>
+                            <div className="mt-1 text-[12.5px] text-muted">or click to browse · up to 250 MB · MP4 / MOV / WebM</div>
+                          </div>
+                        )}
+                      </label>
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <div className="text-[11.5px] text-muted">
+                          Lives on Vercel Blob · auto-thumbnail generated on upload.
+                        </div>
+                        <button
+                          onClick={handleUploadFinalVideo}
+                          disabled={!uploadFile || isUploading || !currentProduct}
+                          className="btn-primary btn-sm flex-shrink-0"
+                        >
+                          {isUploading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Uploading
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4" />
+                              Publish to showcase
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border border-gold/30 bg-gold/[0.04] p-4">
+                      <div className="flex gap-4">
+                        {uploadedVideo.thumbnailUrl && uploadedVideo.thumbnailUrl !== uploadedVideo.videoUrl ? (
+                          <img
+                            src={uploadedVideo.thumbnailUrl}
+                            alt="Uploaded film thumbnail"
+                            className="w-20 h-[120px] rounded-xl object-cover border border-line bg-ink flex-shrink-0"
+                          />
+                        ) : (
+                          <video
+                            src={uploadedVideo.videoUrl}
+                            className="w-20 h-[120px] rounded-xl object-cover border border-line bg-ink flex-shrink-0"
+                            muted
+                            playsInline
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 text-gold text-[12px] font-semibold">
+                            <Check className="w-4 h-4" />
+                            Published
+                          </div>
+                          <div className="mt-1 font-display font-medium text-[14.5px] truncate">
+                            {currentProduct?.title || 'Final film'}
+                          </div>
+                          <div className="text-[12px] text-muted truncate">{uploadedVideo.videoUrl}</div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Link to="/#public" className="btn-primary btn-sm">
+                              View in showcase <ArrowUpRight className="w-4 h-4" />
+                            </Link>
+                            <button onClick={() => handleCopy(uploadedVideo.videoUrl, 'final-url')} className="btn-outline btn-sm">
+                              {copied === 'final-url' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                              {copied === 'final-url' ? 'Copied' : 'Copy URL'}
+                            </button>
+                            <a href={uploadedVideo.downloadUrl || uploadedVideo.videoUrl} download className="btn-outline btn-sm">
+                              <Download className="w-4 h-4" />
+                              Download
+                            </a>
+                            <button
+                              onClick={() => {
+                                setUploadedVideo(null);
+                                setUploadFile(null);
+                                if (fileInputRef.current) fileInputRef.current.value = '';
+                              }}
+                              className="btn-ghost btn-sm"
+                            >
+                              Upload another
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {!promptPack && currentProduct && (
                 <div className="card p-6">
